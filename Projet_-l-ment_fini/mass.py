@@ -1,6 +1,6 @@
-# mass.py
+# --------------------------------------------------MODIFIE-------------------------------------------------------------------------------
 import numpy as np
-from scipy.sparse import lil_matrix
+from scipy.sparse import coo_matrix, lil_matrix
 
 
 def assemble_mass(elemTags, conn, det, w, N, tag_to_dof):
@@ -18,30 +18,37 @@ def assemble_mass(elemTags, conn, det, w, N, tag_to_dof):
 
     Returns
     -------
-    M : lil_matrix (nn x nn)
+    M : coo_matrix (nn x nn)
     """
-    ne = len(elemTags)
-    ngp = len(w)
-    nloc = int(len(conn) // ne)
-    nn = int(np.max(tag_to_dof) + 1)
+    #---Dimensions------------------------------------------------
+    ne = len(elemTags)                                           # nombre d'éléments dans le maillage
+    ngp = len(w)                                                 # nombre de points de Gauss par élément
+    nloc = int(len(conn) // ne)                                  # nombre de nœuds locaux par élément (ex : 3 pour un triangle linéaire)
+    nn = int(np.max(tag_to_dof) + 1)                             # nombre total de degrés de liberté (DoFs) dans le système global
 
+    #---Reshape des entrées-----------------------------------------
     det = np.asarray(det, dtype=np.float64).reshape(ne, ngp)
     conn = np.asarray(conn, dtype=np.int64).reshape(ne, nloc)
     N = np.asarray(N, dtype=np.float64).reshape(ngp, nloc)
 
-    M = lil_matrix((nn, nn), dtype=np.float64)
+    #---Calcul de toutes les matrices locales de masse (ne, nloc, nloc)----------------------
 
-    for e in range(ne):
-        element_tags = conn[e, :]
-        dof_indices = tag_to_dof[element_tags]
-        for g in range(ngp):
-            wg = w[g]
-            detg = det[e, g]
-            for a in range(nloc):
-                Ia = int(dof_indices[a])
-                Na = N[g, a]
-                for b in range(nloc):
-                    Ib = int(dof_indices[b])
-                    M[Ia, Ib] += wg * Na * N[g, b] * detg
+    wd = w[None, :] * det                        # (ne, ngp)    ->modifie la taille de w pour qu'elle puisse être multipliée élément par élément avec det
+    Me = np.einsum('eg,ga,gb->eab', wd, N, N)   # (ne, nloc, nloc)  -> calcule les contributions locales à la matrice de masse pour chaque élément en utilisant les poids de quadrature et les valeurs des fonctions de base aux points de Gauss
+
+
+    #---Indicces globaux pour chaque (e,a,b)--------------------------------------
+
+    dof_indices = tag_to_dof[conn]               # (ne, nloc) -> convertit les tags de nœuds locaux en indices de degrés de liberté globaux à l'aide du mapping tag_to_dof, ce qui permet d'assembler correctement les contributions locales dans la matrice globale M.
+    rows = dof_indices[:, :, None]               # (ne, nloc, 1) -> prépare les indices de ligne pour l'assemblage en ajoutant une dimension supplémentaire pour permettre la diffusion lors de l'assemblage des contributions locales dans la matrice globale M.
+    cols = dof_indices[:, None, :]               # (ne, 1, nloc) -> prépare les indices de colonne pour l'assemblage en ajoutant une dimension supplémentaire pour permettre la diffusion lors de l'assemblage des contributions locales dans la matrice globale M.
+    rows = np.broadcast_to(rows, (ne, nloc, nloc)).ravel()
+    cols = np.broadcast_to(cols, (ne, nloc, nloc)).ravel() #-> (ne*nloc*nloc,) -> diffuse les indices de ligne et de colonne pour correspondre à la taille des contributions locales à la matrice de masse, puis les aplatis en un tableau 1D pour l'assemblage dans la matrice globale M.
+    vals = Me.ravel()                      # (ne*nloc*nloc,) -> aplatit les contributions locales à la matrice de masse en un tableau 1D pour l'assemblage dans la matrice globale M.
+
+
+    #---Assemblage final dans la matrice globale M--------------------------------------
+
+    M = coo_matrix((vals, (rows, cols)), shape=(nn, nn)) #-> crée une matrice creuse au format COO à partir des indices de ligne, de colonne et des valeurs, puis la convertit en format LIL pour une manipulation efficace lors de l'assemblage final dans la matrice globale M.
 
     return M
