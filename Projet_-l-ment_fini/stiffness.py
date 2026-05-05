@@ -2,6 +2,8 @@
 import numpy as np
 from scipy.sparse import lil_matrix
 
+from scipy.sparse import coo_matrix
+
 
 def assemble_stiffness_and_rhs(elemTags, conn, jac, det, xphys, w, N, gN, kappa_fun, rhs_fun, tag_to_dof):
     """
