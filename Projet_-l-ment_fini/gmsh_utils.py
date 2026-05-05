@@ -53,6 +53,34 @@ def get_jacobians(elemType, xi, tag=-1):
     jacobians, dets, coords = gmsh.model.mesh.getJacobians(elemType, xi, tag=tag)
     return jacobians, dets, coords
 
+#-------------------------------------------------------------------------------
+# Modified by ourself to add a function that gets Jacobians
+# for all entities in a named physical group, iterating over
+# entity tags in the same order as blade_geometry uses for connectivity arrays.
+#-------------------------------------------------------------------------------
+def get_jacobians_physical(physical_name, elemType, xi):
+    """
+    Returns Jacobians for all entities in a named physical group, iterating over
+    entity tags in the same order as blade_geometry uses for connectivity arrays.
+    """
+    entity_tags = gmsh.model.getEntitiesForPhysicalName(physical_name) # Get entity tags for the given physical group name
+    jacobians_list = [] 
+    dets_list = []
+    coords_list = []
+    
+    for dim, tag in entity_tags:
+        jacobians, dets, coords = gmsh.model.mesh.getJacobians(elemType, xi, tag=tag)
+        jacobians_list.append(jacobians)
+        dets_list.append(dets)
+        coords_list.append(coords)
+    
+    # Concatenate results from all entities
+    jacobians_all = np.concatenate(jacobians_list) 
+    dets_all = np.concatenate(dets_list) 
+    coords_all = np.concatenate(coords_list)
+    
+    return jacobians_all, dets_all, coords_all
+#-------------------------------------------------------------------------------
 
 def end_dofs_from_nodes(nodeCoords):
     """
@@ -130,11 +158,44 @@ def open_2d_mesh(msh_filename, order=1):
 
     curve_tags = gmsh.model.getBoundary([(2, surf)], oriented=False)
     
+    #--------------------------------------------
+    # Add physical groups for the boundaries
+    #--------------------------------------------
+
+    def _approx_curve_length(ctag):
+        """
+        Approximate the length of a curve given its tag by summing distances between its nodes.
+        """
+        node_tags, node_coords, _ = gmsh.model.mesh.getNodes(dim=1, tag=ctag)
+        if len(node_coords) == 0:
+            return 0.0
+        pts = np.asarray(node_coords, dtype=float).reshape(-1, 3)
+        pts = pts[:, :2]  # We only care about x and y for length
+        cen = np.mean(pts, axis=0)
+        angles = np.arctan2(pts[:, 1] - cen[1], pts[:, 0] - cen[0])
+        order = np.argsort(angles)
+        pts_ordered = pts[order]
+        segs = np.diff(np.vstack([pts_ordered, pts_ordered[0]]), axis=0)
+        return float(np.sum(np.sqrt(segs[:, 0]**2 + segs[:, 1]**2)))
+
+    lengths = [_approx_curve_length(ctag) for _, ctag in curve_tags]
+    outer_idx = int(np.argmax(lengths))
+    inner_idx = 1 - outer_idx
+
+    """
     gmsh.model.addPhysicalGroup(1, [curve_tags[0][1]], tag=1)
     gmsh.model.setPhysicalName(1, 1, "OuterBoundary")
 
     gmsh.model.addPhysicalGroup(1, [curve_tags[1][1]], tag=2)
     gmsh.model.setPhysicalName(1, 2, "InnerBoundary")
+    """
+    gmsh.model.addPhysicalGroup(1, [abs(curve_tags[outer_idx][1])], tag=1)
+    gmsh.model.setPhysicalName(1, 1, "OuterBoundary")
+
+    gmsh.model.addPhysicalGroup(1, [abs(curve_tags[inner_idx][1])], tag=2)
+    gmsh.model.setPhysicalName(1, 2, "InnerBoundary")
+
+    #---------------------------------------------
 
     bnds = [('OuterBoundary', 1),('InnerBoundary', 1)]
 
