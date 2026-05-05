@@ -31,10 +31,10 @@ def create_blade_3d(a=0.1, b=0.004,
 
     # ── Sommets ───────────────────────────────────────────────────────────────
     # Base (z = 0)
-    p1 = gmsh.model.geo.addPoint( 0, -b, 0,       cl_base)  # sud
-    p2 = gmsh.model.geo.addPoint( a,  0, 0,       cl_base)  # est
-    p3 = gmsh.model.geo.addPoint( 0,  b, 0,       cl_base)  # nord
-    p4 = gmsh.model.geo.addPoint(-a,  0, 0,       cl_base)  # ouest
+    p1 = gmsh.model.geo.addPoint(0, -b, 0, cl_base)  # sud
+    p2 = gmsh.model.geo.addPoint(a, 0, 0, cl_base)   # est
+    p3 = gmsh.model.geo.addPoint(0, b, 0, cl_base)   # nord
+    p4 = gmsh.model.geo.addPoint(-a, 0, 0, cl_base)  # ouest
 
     # Jonction forte / effilée (z = L_forte)
     p5 = gmsh.model.geo.addPoint( 0, -b, L_forte, cl_base)

@@ -34,7 +34,7 @@ cl_tip   = 0.002   # taille maille à la pointe
 dt       = 0.05    # pas de temps [s]
 nsteps   = 600     # → 30 s de trempe
 theta    = 1.0
-order    = 5
+order    = 2
 z_cut    = L_forte * 0.5   # position de la coupe transversale
 
 # ----- Maillage --------------------------------------------------------------
