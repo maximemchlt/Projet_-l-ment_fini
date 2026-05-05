@@ -1,3 +1,4 @@
+#---------------------------------------MODIFIE---------------------------------------------------
 import numpy as np
 import matplotlib.pyplot as plt
 import gmsh
@@ -23,26 +24,25 @@ FLUIDS = {
 }
 
 # ── Choix de la simulation ───────────────────────────────────────────────────
-mat      = MATERIALS["steel"]
-fluid    = FLUIDS["water"]
-#Dictionnaires pour les matériaux et fluides, avec des propriétés physiques typiques pour l'acier et l'eau. On peut facilement changer pour d'autres matériaux ou fluides.
-T0       = 1000.0   # température initiale [°C]
-L        = 0.004    # demi-épaisseur de la lame dans la direction b [m]
-dt       = 0.002    # pas de temps [s]
-nsteps   = 5000     # nombre de pas → 10 s ≈ 8 tau_diff
-theta    = 1.0      # 1=Euler implicite
-order    = 1        # ordre des éléments
+mat    = MATERIALS["steel"]
+fluid  = FLUIDS["water"]
 
-rho, cp, k   = mat["rho"], mat["cp"], mat["k"]
-h, T_inf     = fluid["h"], fluid["T_inf"]
-# tau_diff = b²·ρ·cp/k = 0.004²×7800×500/50 ≈ 1.25 s  |  Bi = h·b/k = 3000×0.004/50 = 0.24
+T0     = 1000.0   # température initiale [°C]
+L      = 0.004    # demi-épaisseur de la lame [m]
+dt     = 0.002    # pas de temps [s]
+nsteps = 5000     # nombre de pas
+theta  = 1.0      # 1=Euler implicite
+order  = 1        # ordre des éléments
+
+rho, cp, k = mat["rho"], mat["cp"], mat["k"]
+h, T_inf   = fluid["h"], fluid["T_inf"]
 
 # ── Maillage 1D ──────────────────────────────────────────────────────────────
-gmsh_init("quench_1d") # initialisation de Gmsh pour un maillage 1D
+gmsh_init("quench_1d")
 
 _, elemType, nodeTags, nodeCoords, elemTags, elemNodeTags = \
     build_1d_mesh(L=L, cl1=0.0002, cl2=0.0002, order=order)
-#On crée et maille un segment 1D de longueur L, avec une taille de maille de 1 mm et un ordre d'élément défini par la variable "order".
+
 unique_tags = np.unique(elemNodeTags)
 num_dofs    = len(unique_tags)
 max_tag     = int(np.max(nodeTags))
@@ -50,8 +50,8 @@ tag_to_dof  = np.full(max_tag + 1, -1, dtype=int)
 for i, tag in enumerate(unique_tags):
     tag_to_dof[int(tag)] = i
 
-xi, w, N, gN      = prepare_quadrature_and_basis(elemType, order)
-jac, det, coords  = get_jacobians(elemType, xi)
+xi, w, N, gN     = prepare_quadrature_and_basis(elemType, order)
+jac, det, coords = get_jacobians(elemType, xi)
 
 # ── Assemblage volume ─────────────────────────────────────────────────────────
 def kappa(x): return float(k)
@@ -67,15 +67,10 @@ M_vol = assemble_mass(elemTags, elemNodeTags, det, w, N, tag_to_dof)
 M_vol = M_vol * (rho * cp)
 
 # ── Condition de Robin sur le bord gauche x=0 ────────────────────────────────
-# En 1D, la "frontière" est un seul point — le noeud en x=0
-# On identifie ce noeud et on ajoute h*T directement
 left_dof, right_dof = end_dofs_from_nodes(nodeCoords)
 
-# Robin en x=0 : K[left,left] += h,  F[left] += h*T_inf
 K_vol[left_dof, left_dof] += h
 F_vol[left_dof]            += h * T_inf
-
-# Neumann nul en x=L/2 (symétrie) : rien à faire — naturellement satisfait
 
 K = K_vol.tocsr()
 M = M_vol.tocsr()
