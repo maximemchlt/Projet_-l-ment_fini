@@ -138,9 +138,9 @@ def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof, show_
     levels = np.linspace(vmin_eff, vmax_eff, 100)
     U_clip = np.clip(U, vmin_eff, vmax_eff)
     
-    contour = ax.tricontourf(x, y, triangles, U, levels=100, cmap='seismic', vmin=vmin_eff, vmax=vmax_eff)
+    contour = ax.tricontourf(x, y, triangles, U_clip, levels = levels, cmap='hot', vmin=vmin_eff, vmax=vmax_eff)
     
     if show_mesh:
         ax.triplot(x, y, triangles, color='white', linewidth=0.2, alpha=0.3)
 
-    return contour
+    return contour, ax
