@@ -101,7 +101,7 @@ def plot_mesh_2d(elemType, nodeTags, nodeCoords, elemTags, elemNodeTags, bnds, b
     plt.show()
 
 
-def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof, show_mesh=False, ax=None, label=None):
+def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof, show_mesh=False, ax=None, label=None, vmin = None, vmax = None):
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -132,7 +132,13 @@ def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof, show_
     triangles = tag_to_dof[conn_reshaped[:, :3].astype(int)]
     # 4. Plotting
     U = np.array(U).flatten()
-    contour = ax.tricontourf(x, y, triangles, U, levels=100, cmap='seismic', vmin=-2.0, vmax=2.0)
+    vmin_eff = float(np.min(U)) if vmin is None else float(vmin)
+    vmax_eff = float(np.max(U)) if vmax is None else float(vmax)
+
+    levels = np.linspace(vmin_eff, vmax_eff, 100)
+    U_clip = np.clip(U, vmin_eff, vmax_eff)
+    
+    contour = ax.tricontourf(x, y, triangles, U, levels=100, cmap='seismic', vmin=vmin_eff, vmax=vmax_eff)
     
     if show_mesh:
         ax.triplot(x, y, triangles, color='white', linewidth=0.2, alpha=0.3)
