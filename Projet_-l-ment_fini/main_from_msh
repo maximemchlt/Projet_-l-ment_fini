@@ -44,12 +44,11 @@ def main():
     gmsh_init("jsp")
 
     # ── Chargement du maillage ────────────────────────────────────────────────
-    # open_2d_mesh détecte automatiquement OuterBoundary
+    # open_2d_mesh détecte automatiquement OuterBoundary mais pas tout le contour extérieur, d'où la nécessité de récupérer les éléments de bord à part pour appliquer la condition de Robin.
+
     (elemType, nodeTags, nodeCoords,
      elemTags, elemNodeTags,
-     bnds, bnds_tags) = open_2d_mesh(
-        msh_filename="jsp", order=args.order
-    )
+     bnds, bnds_tags) = open_2d_mesh(msh_filename="jsp", order=args.order)
 
     # ── Mapping tag gmsh → indice dof ────────────────────────────────────────
     unique_tags = np.unique(elemNodeTags)
@@ -86,13 +85,9 @@ def main():
     # ── Quadrature et base — segments (frontière) ─────────────────────────────
     # On récupère les éléments du contour extérieur
     import gmsh
-    bnd_dimtags  = gmsh.model.getEntitiesForPhysicalName("OuterBoundary")
-    bnd_entityTag = bnd_dimtags[0][1]
+    bnd_dimtags = gmsh.model.getBoundary(gmsh.model.getEntities(dim=2),oriented=False)
 
     from gmsh_utils import getPhysical
-
-    import gmsh
-    bnd_dimtags = gmsh.model.getEntitiesForPhysicalName("OuterBoundary")
 
     bnd_elemType = gmsh.model.mesh.getElementType("line", args.order)
     xib, wb, Nb, gNb = prepare_quadrature_and_basis(bnd_elemType, args.order)
@@ -116,6 +111,7 @@ def main():
     detb             = np.concatenate(all_detb)
     coordsb          = np.concatenate(all_coordsb)
     bnd_entityTag    = bnd_dimtags[0][1]
+    
 
     # ── Assemblage rigidité K et second membre F ──────────────────────────────
     K_lil, F = assemble_stiffness_and_rhs(

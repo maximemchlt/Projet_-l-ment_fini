@@ -22,9 +22,9 @@ def assemble_mass(elemTags, conn, det, w, N, tag_to_dof):
     """
     #---Dimensions------------------------------------------------
     ne = len(elemTags)                                           # nombre d'éléments dans le maillage
-    ngp = len(w)                                                 # nombre de points de Gauss par élément
+    ngp = len(w)                                              # nombre de points de Gauss par élément
     nloc = int(len(conn) // ne)                                  # nombre de nœuds locaux par élément (ex : 3 pour un triangle linéaire)
-    nn = int(np.max(tag_to_dof) + 1)                             # nombre total de degrés de liberté (DoFs) dans le système global
+    nn = np.max(tag_to_dof[tag_to_dof >= 0]) + 1        # nombre total de degrés de liberté (DoFs) dans le système global
 
     #---Reshape des entrées-----------------------------------------
     det = np.asarray(det, dtype=np.float64).reshape(ne, ngp)
