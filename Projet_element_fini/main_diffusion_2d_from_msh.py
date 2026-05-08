@@ -51,18 +51,18 @@ def main():
     T_inf = 20.0     # température de l'eau [°C]
 
     # ── Température initiale de la lame ───────────────────────────────────────
-    T0 = 900.0       # lame sortant du four [°C]
+    T0 = 500.0       # lame sortant du four [°C]
 
     dt    = args.dt
     nstep = args.nsteps
 
     # ── Initialisation gmsh ───────────────────────────────────────────────────
-    gmsh_init("epeeronde")
+    gmsh_init("jsp")
 
     # ── Chargement du maillage ────────────────────────────────────────────────
     (elemType, nodeTags, nodeCoords,
      elemTags, elemNodeTags,
-     bnds, bnds_tags) = open_2d_mesh(msh_filename="epeeronde", order=args.order)
+     bnds, bnds_tags) = open_2d_mesh(msh_filename="jsp", order=args.order)
 
     # ── Mapping tag gmsh → indice dof ────────────────────────────────────────
     unique_tags = np.unique(elemNodeTags)
