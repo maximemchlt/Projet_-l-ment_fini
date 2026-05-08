@@ -43,14 +43,28 @@ def main():
     nstep = args.nsteps
 
     # ── Initialisation gmsh ───────────────────────────────────────────────────
+<<<<<<< HEAD
     gmsh_init("jsp")
+=======
+    gmsh_init("Projet_element_fini/sword2dbig")
+    # gmsh_init("Projet_element_fini/sword2d00025")
+>>>>>>> 78f7603cd2d766a80023baeb364a4427dbf6ee7c
 
     # ── Chargement du maillage ────────────────────────────────────────────────
     # open_2d_mesh détecte automatiquement OuterBoundary mais pas tout le contour extérieur, d'où la nécessité de récupérer les éléments de bord à part pour appliquer la condition de Robin.
 
     (elemType, nodeTags, nodeCoords,
      elemTags, elemNodeTags,
+<<<<<<< HEAD
      bnds, bnds_tags) = open_2d_mesh(msh_filename="jsp", order=args.order)
+=======
+     bnds, bnds_tags) = open_2d_mesh(msh_filename="Projet_element_fini/sword2dbig", order=args.order)
+    
+    #(elemType, nodeTags, nodeCoords,
+    # elemTags, elemNodeTags,
+    # bnds, bnds_tags) = open_2d_mesh(msh_filename="Projet_element_fini/sword2d00025", order=args.order)
+
+>>>>>>> 78f7603cd2d766a80023baeb364a4427dbf6ee7c
 
     # ── Mapping tag gmsh → indice dof ────────────────────────────────────────
     unique_tags = np.unique(elemNodeTags)
