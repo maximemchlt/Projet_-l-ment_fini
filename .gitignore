@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+Projet_element_fini/__pycache__/
+Projet_element_fini/*.pyc
