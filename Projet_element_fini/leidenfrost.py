@@ -9,7 +9,6 @@ d'échange convectif :
   2. Transition Leidenfrost          : h croît brutalement
   3. Ébullition nucléée / convection : h fort puis stabilisé
 
-On utilise une boucle pour parcourir les températures dans T. 
 
 """
 import numpy as np
@@ -42,7 +41,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     T = np.linspace(20.0, 1000.0, 500)
-    h = np.array([h_leidenfrost(t) for t in T])  # ← boucle obligatoire
+    h = np.array([h_leidenfrost(t) for t in T]) 
     h_cst = h_constant(T)
 
     fig, ax = plt.subplots(figsize=(8, 5))
