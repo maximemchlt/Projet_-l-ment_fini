@@ -14,8 +14,9 @@ def assemble_stiffness_and_rhs(elemTags, conn, jac, det, xphys, w, N, gN, kappa_
     Notes:
     - gmsh gives gN in reference coordinates; we map with inv(J).
     - For 1D line embedded in 3D, gmsh provides a 3x3 Jacobian; we keep the same approach.
-    Parameters
-    ----------
+    
+    Parameter
+    ---------
     elemTags : list of int
         Element tags (one per element).
     conn : ndarray (ne x nloc) 

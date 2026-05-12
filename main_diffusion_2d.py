@@ -12,18 +12,30 @@ from mass import assemble_mass
 from dirichlet import theta_step_robin
 from plot_utils import plot_fe_solution_2d
 
-# ── Paramètres matériau et fluide ────────────────────────────────────────────
+# ── Paramètres matériau ──────────────────────────────────────────────────────
 MATERIALS = {
     "steel":    {"rho": 7800, "cp": 500, "k": 50},
     "titanium": {"rho": 4500, "cp": 520, "k": 22},
+    "aluminum": {"rho": 2700, "cp": 900, "k": 205},
+    "copper":   {"rho": 8900, "cp": 385, "k": 400},
+    "brass":    {"rho": 8500, "cp": 380, "k": 120},
 }
+
+# ── Paramètres fluide de trempe ──────────────────────────────────────────────
 FLUIDS = {
     "water": {"h": 3000, "T_inf": 20.0},
     "oil":   {"h":  500, "T_inf": 60.0},
+    "air":   {"h":   50, "T_inf": 20.0},
+    "quench": {"h": 5000, "T_inf": 20.0},
+    "liquid_nitrogen": {"h": 10000, "T_inf": -196.0},
 }
 
-mat   = MATERIALS["steel"]
-fluid = FLUIDS["water"]
+# ── Simulation parameters ───────────────────────────────────────────────────
+Mat = "steel"
+Fluid = "water"
+
+mat   = MATERIALS[Mat]
+fluid = FLUIDS[Fluid]
 
 rho, cp, k = mat["rho"], mat["cp"], mat["k"]
 h, T_inf   = fluid["h"], fluid["T_inf"]
@@ -112,7 +124,7 @@ def main():
                 ax=ax
             )
             T_mean = U.mean()
-            ax.set_title(f"Trempe acier/eau - t = {step*dt:.1f} s    T_moy = {T_mean:.0f} degC")
+            ax.set_title(f"Trempe {Mat}/{Fluid} - t = {step*dt:.1f} s    T_moy = {T_mean:.0f} degC")
             ax.set_xlabel("x [m]")
             ax.set_ylabel("y [m]")
             ax.axis('equal')
