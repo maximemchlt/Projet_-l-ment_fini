@@ -200,7 +200,8 @@ def end_dofs_from_nodes(nodeCoords):
     right : int
         Index of the rightmost node.
     """
-    X = np.asarray(nodeCoords, dtype=float).reshape(-1, 3)[:, 0]
+    nodeCoordsArray = np.asarray(nodeCoords, dtype=float)
+    X = nodeCoordsArray.reshape(-1, 3)[:, 0]  
     left = int(np.argmin(X))
     right = int(np.argmax(X))
     return left, right
