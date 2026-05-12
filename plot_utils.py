@@ -12,6 +12,30 @@ def plot_fe_solution_high_order(
     """
     Plot 1D high-order FE solution by sampling each element and evaluating gmsh basis.
     Assumes U is aligned with gmsh's compact node ordering (0..nn-1).
+
+    Parameters
+    ----------
+    elemType : int
+        GMSH element type (e.g., 1 for line, 2 for triangle, etc.).
+    elemNodeTags : array-like, shape (ne*nloc,)
+        Element node tags.
+    nodeCoords : array-like, shape (nn, 3)
+        Node coordinates.
+    U : array-like, shape (nn,)
+        Solution values at nodes.
+    M : int, optional
+        Number of sampling points per element (default: 80).
+    show_nodes : bool, optional
+        Whether to show node locations (default: False).
+    ax : matplotlib.axes.Axes, optional
+        Axes object to plot on.
+    label : str, optional
+        Label for the plot line.
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+        The axes object with the plot.
     """
     _, _, _, nloc, _, _ = gmsh.model.mesh.getElementProperties(elemType)
 
@@ -51,6 +75,23 @@ def plot_fe_solution_high_order(
 
 
 def setup_interactive_figure(xlim=None, ylim=None):
+    """
+    Set up an interactive Matplotlib figure with optional axis limits.
+
+    Parameters
+    ----------
+    xlim : tuple of (float, float), optional
+        Limits for the x-axis (default: None).
+    ylim : tuple of (float, float), optional
+        Limits for the y-axis (default: None).
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The created figure object.
+    ax : matplotlib.axes.Axes
+        The created axes object.
+    """
     plt.ion()
     fig, ax = plt.subplots()
     if xlim is not None:
@@ -60,7 +101,35 @@ def setup_interactive_figure(xlim=None, ylim=None):
     return fig, ax
 
 def plot_mesh_2d(elemType, nodeTags, nodeCoords, elemTags, elemNodeTags, bnds, bnds_tags, tag_to_index=None):
+    """
+    Plot 2D mesh with boundary nodes highlighted.
 
+    Parameters
+    ----------
+    elemType : int
+        GMSH element type (e.g., 2 for triangle, etc.).
+    nodeTags : array-like, shape (nn,)
+        Node tags.
+    nodeCoords : array-like, shape (nn, 3)
+        Node coordinates.
+    elemTags : array-like, shape (ne,)
+        Element tags.
+    elemNodeTags : array-like, shape (ne*nloc,)
+        Element node tags.
+    bnds : list of tuples
+        List of boundary conditions, each tuple containing (name: str, dim: int).
+    bnds_tags : list of arrays
+        List of node tags for each boundary condition.
+    tag_to_index : array-like, shape (max_tag + 1,), optional
+        Mapping from node tags to indices (default: None).
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The created figure object.
+    ax : matplotlib.axes.Axes
+        The created axes object.
+    """
     coords = nodeCoords.reshape(-1, 3)
     x = coords[:, 0]
     y = coords[:, 1]
@@ -102,6 +171,39 @@ def plot_mesh_2d(elemType, nodeTags, nodeCoords, elemTags, elemNodeTags, bnds, b
 
 
 def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof, show_mesh=False, ax=None, label=None, vmin = None, vmax = None):
+    """
+    Plot 2D FE solution using Matplotlib's tricontourf, dynamically determining the number of nodes per element and mapping GMSH tags to compact DoF indices.
+
+    Parameters
+    ----------
+    elemNodeTags : array-like, shape (ne*nloc,)
+        Element node tags.
+    nodeCoords : array-like, shape (nn, 3)
+        Node coordinates.
+    nodeTags : array-like, shape (nn,)
+        Node tags.
+    U : array-like, shape (nn,)
+        Solution values at each node.
+    tag_to_dof : array-like, shape (max_tag + 1,)
+        Mapping from node tags to DoF indices.
+    show_mesh : bool, optional
+        Whether to show the mesh skeleton (default: False).
+    ax : matplotlib.axes.Axes, optional
+        The axes object to plot on (default: None).
+    label : str, optional
+        Label for the colorbar (default: None).
+    vmin : float, optional
+        Minimum value for the colorbar (default: None).
+    vmax : float, optional
+        Maximum value for the colorbar (default: None).
+
+    Returns
+    -------
+    contour : matplotlib.contour.QuadContourSet
+        The contour plot object.
+    ax : matplotlib.axes.Axes
+        The axes object with the plot.
+    """
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))

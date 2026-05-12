@@ -7,16 +7,37 @@ def create_blade_section(a=0.02, b=0.004, cl=0.001, order=1):
 
     Paramètres
     ----------
-    a   : demi-largeur [m]
-    b   : demi-épaisseur [m]
-    cl  : taille caractéristique du maillage [m]
-    order : ordre des éléments
+    a : float
+        demi-largeur [m]
+    b : float
+        demi-épaisseur [m]
+    cl : float
+        taille caractéristique du maillage [m]
+    order : int
+        ordre des éléments
 
-    Retourne
-    --------
-    elemType, nodeTags, nodeCoords,
-    elemTags, elemNodeTags,
-    bnd_elemType, bnd_elemTags, bnd_elemNodeTags, bnd_entityTag
+    Returns
+    -------
+    elemType : int
+        Type d'élément (triangulaire ou quadrangulaire).
+    nodeTags : ndarray
+        Tags des nœuds.
+    nodeCoords : ndarray
+        Coordonnées des nœuds.
+    elemTags : ndarray
+        Tags des éléments.
+    elemNodeTags : ndarray
+        Tags des nœuds des éléments.
+    bnd_elemType : int
+        Type d'élément de frontière.
+    bnd_elemTags : ndarray
+        Tags des éléments de frontière.
+    bnd_elemNodeTags : ndarray
+        Tags des nœuds des éléments de frontière.
+    bnd_entityTag : int
+        Tag de l'entité de frontière.
+    surf : int
+        Tag de la surface physique.
     """
 
     # ── Étape 1 : définir les 4 coins du losange ──────────────────────────────

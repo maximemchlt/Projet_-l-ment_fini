@@ -14,7 +14,9 @@ d'échange convectif :
 import numpy as np
 
 def h_constant(T, h=3000.0):
-    """h constant — référence pour comparaison."""
+    """
+    h constant — référence pour comparaison.
+    """
     T_arr = np.asarray(T, dtype=float)
     if T_arr.ndim == 0:
         return float(h)
@@ -24,7 +26,26 @@ def h_leidenfrost(T, h_max=8000.0, h_film=200.0, T_leid=300.0, T_nucl=100.0, h_c
     
     """
     h(T) en W/m²K — version scalaire.
-    T : température de la pièce en °C
+
+    Parameters
+    ----------
+    T : float
+        Température de la pièce [°C]
+    h_max : float (optionnel)
+        Valeur maximale de h au pic de Leidenfrost [W/m²K]
+    h_film : float (optionnel)
+        Valeur de h en régime d'ébullition en film (T >> T_leid) [W/m²K]
+    T_leid : float (optionnel)
+        Température de transition Leidenfrost [°C]
+    T_nucl : float (optionnel)
+        Température de transition ébullition nucléée / convection [°C]
+    h_conv : float (optionnel)
+        Valeur de h en régime d'ébullition nucléée / convection (T < T_nucl) [W/m²K]
+
+    Returns
+    -------
+    h : float
+        Coefficient de transfert de chaleur h(T) [W/m²K]
     """
     
     T_low = 20.0

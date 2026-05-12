@@ -14,6 +14,28 @@ def apply_dirichlet_by_reduction(K, F, dirichlet_dofs, dirichlet_values):
     -> K_FF u_F = F_F - K_FD u_D
 
     K can be sparse (csr/lil/etc).
+
+    Parameters
+    ----------
+    K : sparse matrix
+        Stiffness matrix.
+    F : array_like
+        Right-hand side vector.
+    dirichlet_dofs : array_like
+        Indices of dofs with Dirichlet conditions.
+    dirichlet_values : array_like
+        Values of the solution at the Dirichlet dofs.
+
+    Returns
+    -------
+    K_FF : sparse matrix
+        Reduced stiffness matrix for free dofs.
+    F_red : ndarray
+        Reduced right-hand side for free dofs.
+    free_dofs : ndarray
+        Indices of free dofs.
+    U_full : ndarray
+        Full solution vector with Dirichlet values at the specified dofs.
     """
     dirichlet_dofs = np.asarray(dirichlet_dofs, dtype=int)
     dirichlet_values = np.asarray(dirichlet_values, dtype=float)
@@ -36,6 +58,24 @@ def apply_dirichlet_by_reduction(K, F, dirichlet_dofs, dirichlet_values):
 
 
 def solve_dirichlet(K, F, dirichlet_dofs, dirichlet_values):
+    """
+    Solve linear system with strong Dirichlet by reduction.
+    Parameters
+    ----------
+    K : sparse matrix
+        Stiffness matrix.
+    F : array_like
+        Right-hand side vector.
+    dirichlet_dofs : array_like
+        Indices of dofs with Dirichlet conditions.
+    dirichlet_values : array_like
+        Values of the solution at the Dirichlet dofs.
+
+    Returns
+    -------
+    U_full : ndarray
+        Full solution vector with Dirichlet values at the specified dofs.
+    """
     K_red, F_red, free_dofs, U_full = apply_dirichlet_by_reduction(
         K, F, dirichlet_dofs, dirichlet_values
     )
@@ -52,6 +92,32 @@ def theta_step(M, K, F_n, F_np1, U_n, dt, theta, dirichlet_dofs, dir_vals_np1):
 
     (M + theta dt K) u^{n+1} = (M - (1-theta) dt K) u^n + dt*(theta F^{n+1} + (1-theta) F^n)
     with Dirichlet enforced at time n+1.
+
+    Parameters
+    ----------
+    M : sparse matrix
+        Mass matrix.
+    K : sparse matrix
+        Stiffness matrix.
+    F_n : array_like
+        Right-hand side vector at time n.
+    F_np1 : array_like
+        Right-hand side vector at time n+1.
+    U_n : array_like
+        Solution vector at time n.
+    dt : float
+        Time step.
+    theta : float
+        Theta parameter for the theta-scheme.
+    dirichlet_dofs : array_like
+        Indices of dofs with Dirichlet conditions.
+    dir_vals_np1 : array_like
+        Values of the solution at the Dirichlet dofs at time n+1.
+
+    Returns
+    -------
+    U_full : ndarray
+        Full solution vector with Dirichlet values at the specified dofs.
     """
     A = M + theta * dt * K
     B = M - (1.0 - theta) * dt * K
@@ -74,6 +140,26 @@ def theta_step_robin(M, K, F, U_n, dt, theta):
     pour la condition de robin pure 
     return U_np1 : solution au temps n+1
      (M + theta dt K) u^{n+1} = (M - (1-theta) dt K) u^n + dt*(theta F^{n+1} + (1-theta) F^n)
+
+    Parameters
+    ----------
+    M : sparse matrix
+        Mass matrix.
+    K : sparse matrix
+        Stiffness matrix.
+    F : array_like
+        Right-hand side vector.
+    U_n : array_like
+        Solution vector at time n.
+    dt : float
+        Time step.
+    theta : float
+        Theta parameter for the theta-scheme.
+
+    Returns
+    -------
+    U_np1 : ndarray
+        Solution vector at time n+1.
     """
     A = M + theta * dt * K
     B = M - (1.0 - theta) * dt * K
@@ -87,20 +173,47 @@ def theta_step_robin_variable_h(M, K_vol, F_vol, U_n, dt, theta,
                                 wb, Nb, h_fun, T_inf, tag_to_dof, surf_dofs = None):
     """
     schemas theta avec h variable en temperature pour la condition de robin
-    param
-    M : matrice de masse
-    K_vol : matrice de rigidité volumique (sans contribution de Robin)
-    F_vol : second membre volumique (sans contribution de Robin)
-    U_n : solution au temps n
-    dt : pas de temps
-    theta : paramètre du schéma de theta
-    bnd_elemTags, bnd_elemNodeTags, detb, coordsb, wb, Nb : données de quadrature et géométriques pour la frontière
-    h_fun : fonction de convection (peut dépendre de la température)
-    T_inf : température extérieure (pour la condition de Robin)
-    tag_to_dof : mapping des tags de nœuds vers les dofs
-    surf_dofs : liste des dofs situés sur la surface (optionnel, peut être déterminé à partir de bnd_elemNodeTags si non fourni)
-    return U_np1 : solution au temps n+1
     (M + theta dt (K_vol + K_robin)) u^{n+1} = (M - (1-theta) dt (K_vol + K_robin)) u^n + dt*(theta F^{n+1} + (1-theta) F^n)
+    
+    Parameters
+    ----------
+    M : sparse matrix
+        Mass matrix.
+    K_vol : sparse matrix
+        Volumetric stiffness matrix.
+    F_vol : array_like
+        Volumetric right-hand side vector.
+    U_n : array_like
+        Solution vector at time n.
+    dt : float
+        Time step.
+    theta : float
+        Theta parameter for the theta-scheme.
+    bnd_elemTags : array_like
+        Tags of boundary elements.
+    bnd_elemNodeTags : array_like
+        Tags of nodes on boundary elements.
+    detb : array_like
+        Determinants of boundary elements.
+    coordsb : array_like
+        Coordinates of boundary nodes.
+    wb : array_like
+        Weights for quadrature on boundary.
+    Nb : array_like
+        Basis functions on boundary.
+    h_fun : callable
+        Function for convective heat transfer coefficient.
+    T_inf : float
+        Ambient temperature.
+    tag_to_dof : dict
+        Mapping from node tags to degrees of freedom.
+    surf_dofs : array_like, optional
+        Indices of degrees of freedom on the surface.
+
+    Returns
+    -------
+    U_np1 : ndarray
+        Solution vector at time n+1.
     """
     if surf_dofs is None:
         surf_dofs = np.unique(tag_to_dof[np.asarray(bnd_elemNodeTags, dtype=int)])

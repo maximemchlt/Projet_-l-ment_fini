@@ -11,14 +11,22 @@ def assemble_mass(elemTags, conn, det, w, N, tag_to_dof):
     Parameters
     ----------
     elemTags : array-like, shape (ne,)
-    conn     : flattened connectivity (ne*nloc)
-    det      : flattened det(J) values (ne*ngp)
-    w        : quadrature weights (ngp)
-    N        : flattened basis values (ngp*nloc)
+        Element tags.
+    conn : flattened connectivity (ne*nloc)
+        Element connectivity.
+    det : flattened det(J) values (ne*ngp)
+        Determinants of the Jacobian matrices.
+    w : quadrature weights (ngp)
+        Quadrature weights.
+    N : flattened basis values (ngp*nloc)
+        Basis function values at quadrature points.
+    tag_to_dof : array-like, shape (max_tag+1,)
+        Mapping from node tags to global degree of freedom indices.
 
     Returns
     -------
     M : coo_matrix (nn x nn)
+        Global mass matrix in sparse COO format.
     """
     #---Dimensions------------------------------------------------
     ne = len(elemTags)                                           # nombre d'éléments dans le maillage

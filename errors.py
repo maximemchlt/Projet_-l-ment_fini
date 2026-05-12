@@ -7,7 +7,20 @@ def _numeric_grad_3d(u_exact, x, eps=1e-7):
     """
     Central finite-difference gradient in R^3 for a scalar function u_exact(x).
     x is a length-3 array-like.
-    Returns grad as (3,) array.
+
+    Parameters
+    ----------
+    u_exact : callable
+        u_exact(xyz) -> float, where xyz is length-3 array-like (x,y,z)
+    x : array-like, shape (3,)
+        Point at which to evaluate the gradient.
+    eps : float
+        Step size for finite difference.
+
+    Returns
+    -------
+    g : ndarray, shape (3,)
+        Gradient of u_exact at x.
     """
     x = np.asarray(x, dtype=float).reshape(3,)
     g = np.zeros(3, dtype=float)
