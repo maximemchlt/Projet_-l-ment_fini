@@ -1,7 +1,11 @@
 # dirichlet.py
 import numpy as np
 from scipy.sparse.linalg import spsolve
+from scipy.linalg import det
+
+
 from stiffness import assemble_robin
+
 
 def apply_dirichlet_by_reduction(K, F, dirichlet_dofs, dirichlet_values):
     """
@@ -62,70 +66,58 @@ def theta_step(M, K, F_n, F_np1, U_n, dt, theta, dirichlet_dofs, dir_vals_np1):
     return U_full
 
 
+# ajout de 2 fonctions (theta_step_robin et theta_step_robin_variable_h) pour le cas de conditions de Robin
+
 def theta_step_robin(M, K, F, U_n, dt, theta):
     """
-    Schéma theta sans Dirichlet — pour la condition de Robin pure.
-    F contient déjà la contribution h*T_inf assemblée dans K et F.
+    schema de theta sans dirivhelt
+    pour la condition de robin pure 
+    return U_np1 : solution au temps n+1
+     (M + theta dt K) u^{n+1} = (M - (1-theta) dt K) u^n + dt*(theta F^{n+1} + (1-theta) F^n)
     """
-    # F est supposé constant en temps (assemblé une seule fois avant la boucle temporelle).
-    A   = M + theta * dt * K    #matrice du système linéaire à résoudre (Theta = 1)
-    B   = M - (1.0 - theta) * dt * K   #B = M si theta = 1
+    A = M + theta * dt * K
+    B = M - (1.0 - theta) * dt * K
     rhs = B.dot(U_n) + dt * F
 
-    return spsolve(A.tocsr(), rhs)
+    U_np1 = spsolve(A.tocsr(), rhs)
+    return U_np1
 
-
-def theta_step_robin_variable_h(M, K_vol, F_vol,
-                                U_n, dt, theta,
-                                bnd_elemTags, bnd_elemNodeTags,
-                                detb, coordsb, wb, Nb,
-                                h_fun, T_inf, tag_to_dof,
-                                surf_dofs=None):
+def theta_step_robin_variable_h(M, K_vol, F_vol, U_n, dt, theta,
+                                bnd_elemTags, bnd_elemNodeTags, detb, coordsb,
+                                wb, Nb, h_fun, T_inf, tag_to_dof, surf_dofs = None):
     """
-    Schéma theta avec h variable en température.
-
-    À chaque pas :
-      1. Calcule T_bnd = moyenne des températures sur les nœuds frontière
-      2. Évalue h_eff = h_fun(T_bnd)
-      3. Réassemble (K_vol + K_robin(h_eff)) et (F_vol + F_robin(h_eff))
-      4. Résout (M + theta*dt*K_total) U_{n+1} = (M - (1-theta)*dt*K_total) U_n
-                                                 + dt*F_total
-
-    Paramètres
-    ----------
-    M, K_vol, F_vol : matrice de masse et terme volumique (constants en temps)
-    U_n             : champ au pas n
-    h_fun           : callable h(T) -> W/m²K
-    surf_dofs       : optionnel, indices DOF des nœuds de surface ; sinon
-                      reconstruit depuis bnd_elemNodeTags via tag_to_dof.
-
-    Retourne
-    --------
-    U_np1 : champ au pas n+1
-    h_eff : valeur scalaire de h utilisée à ce pas (pour log)
+    schemas theta avec h variable en temperature pour la condition de robin
+    param
+    M : matrice de masse
+    K_vol : matrice de rigidité volumique (sans contribution de Robin)
+    F_vol : second membre volumique (sans contribution de Robin)
+    U_n : solution au temps n
+    dt : pas de temps
+    theta : paramètre du schéma de theta
+    bnd_elemTags, bnd_elemNodeTags, detb, coordsb, wb, Nb : données de quadrature et géométriques pour la frontière
+    h_fun : fonction de convection (peut dépendre de la température)
+    T_inf : température extérieure (pour la condition de Robin)
+    tag_to_dof : mapping des tags de nœuds vers les dofs
+    surf_dofs : liste des dofs situés sur la surface (optionnel, peut être déterminé à partir de bnd_elemNodeTags si non fourni)
+    return U_np1 : solution au temps n+1
+    (M + theta dt (K_vol + K_robin)) u^{n+1} = (M - (1-theta) dt (K_vol + K_robin)) u^n + dt*(theta F^{n+1} + (1-theta) F^n)
     """
     if surf_dofs is None:
         surf_dofs = np.unique(tag_to_dof[np.asarray(bnd_elemNodeTags, dtype=int)])
-        surf_dofs = surf_dofs[surf_dofs >= 0]
+        surf_dofs = surf_dofs[surf_dofs >= 0]  # filtrer les dofs valides
 
-    T_bnd_mean = float(U_n[surf_dofs].mean())
-    h_eff      = float(h_fun(T_bnd_mean))
+    T_bnd_mean = np.mean(U_n[surf_dofs])  # moyenne des températures sur les dofs de surface
+    H_eff = float(h_fun(T_bnd_mean))  # évaluer h à la température moyenne de la surface
 
-    # Réassemblage Robin sur une copie de K_vol et F_vol
-    K_local = K_vol.copy()
-    F_local = F_vol.copy()
+    # assembler la contribution de Robin avec h_eff
     K_local, F_local = assemble_robin(
-        K_local, F_local,
-        bnd_elemTags, bnd_elemNodeTags,
-        detb, coordsb,
-        wb, Nb,
-        h_eff, T_inf, tag_to_dof
+        K_vol, F_vol, bnd_elemTags, bnd_elemNodeTags,
+        detb, coordsb, wb, Nb, H_eff, T_inf, tag_to_dof
     )
-
     K_csr = K_local.tocsr()
-    A   = M + theta * dt * K_csr
-    B   = M - (1.0 - theta) * dt * K_csr
+    A = M + theta * dt * K_csr
+    B = M - (1.0 - theta) * dt * K_csr
     rhs = B.dot(U_n) + dt * F_local
 
     U_np1 = spsolve(A.tocsr(), rhs)
-    return U_np1, h_eff
+    return U_np1

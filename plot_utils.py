@@ -101,12 +101,12 @@ def plot_mesh_2d(elemType, nodeTags, nodeCoords, elemTags, elemNodeTags, bnds, b
     plt.show()
 
 
-def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof,
-                         vmin=None, vmax=None,   # ← nouveau
-                         show_mesh=False, ax=None, label=None):
+def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof, show_mesh=False, ax=None, label=None, vmin = None, vmax = None):
+
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
     
+    # 1. Map coordinates to our compact DoF indices
     num_dofs = len(U)
     coords_mapped = np.zeros((num_dofs, 2))
     all_coords = nodeCoords.reshape(-1, 3)
@@ -119,32 +119,27 @@ def plot_fe_solution_2d(elemNodeTags, nodeCoords, nodeTags, U, tag_to_dof,
     x = coords_mapped[:, 0]
     y = coords_mapped[:, 1]
 
+    # 2. Determine nodes per element dynamically
+    total_nodes_in_elems = len(elemNodeTags)
+    # Standard Lagrange triangle node counts: Order 1=3, Order 2=6, Order 3=10, Order 4=15
     for possible_n in [3, 6, 10, 15, 21]:
-        if len(elemNodeTags) % possible_n == 0:
+        if total_nodes_in_elems % possible_n == 0:
             nodes_per_elem = possible_n
             break
-
+    # 3. Reshape and extract ONLY the 3 corner nodes for Matplotlib
     conn_reshaped = elemNodeTags.reshape(-1, nodes_per_elem)
+    # Map the GMSH tags to our 0...N-1 indices
     triangles = tag_to_dof[conn_reshaped[:, :3].astype(int)]
-
+    # 4. Plotting
     U = np.array(U).flatten()
-
-    # Échelle FIXE basée sur les bornes passées (cohérente avec la colorbar fixe).
-    # Si vmin/vmax ne sont pas fournis, on tombe sur l'échelle dynamique du champ.
     vmin_eff = float(np.min(U)) if vmin is None else float(vmin)
     vmax_eff = float(np.max(U)) if vmax is None else float(vmax)
 
-    # Niveaux explicites — sinon tricontourf ignore vmin/vmax et fait son propre min/max
     levels = np.linspace(vmin_eff, vmax_eff, 100)
-    # On clippe U pour éviter les NaN si une valeur sort des bornes
     U_clip = np.clip(U, vmin_eff, vmax_eff)
-
-    contour = ax.tricontourf(x, y, triangles, U_clip, levels=levels,
-                              cmap='hot',
-                              vmin=vmin_eff,
-                              vmax=vmax_eff,
-                              extend='both')
-
+    
+    contour = ax.tricontourf(x, y, triangles, U_clip, levels = levels, cmap='hot', vmin=vmin_eff, vmax=vmax_eff)
+    
     if show_mesh:
         ax.triplot(x, y, triangles, color='white', linewidth=0.2, alpha=0.3)
 

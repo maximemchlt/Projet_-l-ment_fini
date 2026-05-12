@@ -4,11 +4,34 @@ import gmsh
 
 
 def gmsh_init(model_name="fem1d"):
+    """
+    Initialize GMSH and create a new model with the given name.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the GMSH model to create.
+    
+    Returns
+    -------
+    None
+    """
     gmsh.initialize()
     gmsh.model.add(model_name)
 
 
 def gmsh_finalize():
+    """
+    Finalize GMSH.
+
+    Parameters
+    ----------
+    None
+    
+    Returns
+    -------
+    None
+    """
     gmsh.finalize()
 
 
@@ -16,6 +39,32 @@ def build_1d_mesh(L=1.0, cl1=0.02, cl2=0.10, order=1):
     """
     Build and mesh a 1D segment [0,L] with different characteristic lengths.
     Returns (line_tag, elemType, nodeTags, nodeCoords, elemTags, elemNodeTags).
+
+    Parameters
+    ----------
+    L : float
+        Length of the segment.
+    cl1 : float
+        Characteristic length at the left end (x=0).
+    cl2 : float
+        Characteristic length at the right end (x=L).
+    order : int
+        Polynomial order of the elements (1 for linear, 2 for quadratic, etc.)
+    
+    Returns
+    -------
+    line_tag : int
+        GMSH tag of the line entity.
+    elemType : int
+        GMSH element type code for the line elements.
+    nodeTags : ndarray
+        Array of node tags.
+    nodeCoords : ndarray
+        Array of node coordinates (flattened).
+    elemTags : ndarray
+        Array of element tags.
+    elemNodeTags : ndarray
+        Array of node tags for each element (flattened).
     """
     p0 = gmsh.model.geo.addPoint(0.0, 0.0, 0.0, cl1)
     p1 = gmsh.model.geo.addPoint(L, 0.0, 0.0, cl2)
@@ -35,8 +84,25 @@ def build_1d_mesh(L=1.0, cl1=0.02, cl2=0.10, order=1):
 
 def prepare_quadrature_and_basis(elemType, order):
     """
-    Returns:
-      xi (flattened uvw), w (ngp), N (flattened bf), gN (flattened gbf)
+    Prepare quadrature points, weights, basis functions, and their gradients for a given element type and order.
+
+    Parameters
+    ----------
+    elemType : int
+        GMSH element type code (e.g., 1 for line, 2 for triangle, etc.)
+    order : int
+        Polynomial order of the elements (1 for linear, 2 for quadratic, etc.)
+
+    Returns
+    -------
+    xi : ndarray (ngp x 3)
+        Quadrature points in reference coordinates.
+    w : ndarray (ngp,)
+        Quadrature weights.
+    N : ndarray (ngp x nloc)
+        Basis functions evaluated at quadrature points.
+    gN : ndarray (ngp x nloc)
+        Gradient of basis functions evaluated at quadrature points.
     """
     rule = f"Gauss{2 * order}"
     xi, w = gmsh.model.mesh.getIntegrationPoints(elemType, rule)
@@ -48,36 +114,91 @@ def prepare_quadrature_and_basis(elemType, order):
 def get_jacobians(elemType, xi, tag=-1):
     """
     Wrapper around gmsh.getJacobians.
-    Returns (jacobians, dets, coords)
+
+    Parameters
+    ----------
+    elemType : int
+        GMSH element type code (e.g., 1 for line, 2 for triangle, etc.)
+    xi : ndarray (ngp x 3)
+        Quadrature points in reference coordinates.
+    tag : int, optional
+        Tag of the entity for which to compute Jacobians.
+
+    Returns
+    -------
+    jacobians : ndarray
+        Jacobian matrices.
+    dets : ndarray
+        Determinants of the Jacobian matrices.
+    coords : ndarray
+        Coordinates of the quadrature points in the physical space.
     """
     jacobians, dets, coords = gmsh.model.mesh.getJacobians(elemType, xi, tag=tag)
     return jacobians, dets, coords
 
-
+#-------------------------------------------------------------------------------
+# Modified by ourself to add a function that gets Jacobians
+# for all entities in a named physical group, iterating over
+# entity tags in the same order as blade_geometry uses for connectivity arrays.
+#-------------------------------------------------------------------------------
 def get_jacobians_physical(physical_name, elemType, xi):
     """
     Returns Jacobians for all entities in a named physical group, iterating over
     entity tags in the same order as blade_geometry uses for connectivity arrays.
-    This guarantees det[e] matches elemNodeTags[e] regardless of Gmsh's internal
-    sorting when tag=-1 is used.
-    """
-    entity_tags = gmsh.model.getEntitiesForPhysicalName(physical_name)
-    all_jac, all_det, all_coords = [], [], []
-    for dim, tag in entity_tags:
-        jj, dd, cc = gmsh.model.mesh.getJacobians(elemType, xi, tag=tag)
-        all_jac.append(np.asarray(jj, dtype=float))
-        all_det.append(np.asarray(dd, dtype=float))
-        all_coords.append(np.asarray(cc, dtype=float))
-    return (np.concatenate(all_jac),
-            np.concatenate(all_det),
-            np.concatenate(all_coords))
 
+    Parameters
+    ----------
+    physical_name : str
+        Name of the physical group.
+    elemType : int
+        GMSH element type code (e.g., 1 for line, 2 for triangle, etc.)
+    xi : ndarray (ngp x 3)
+        Quadrature points in reference coordinates.
+
+    Returns
+    -------
+    jacobians_all : ndarray
+        Concatenated Jacobian matrices for all entities.
+    dets_all : ndarray
+        Concatenated determinants of the Jacobian matrices.
+    coords_all : ndarray
+        Concatenated coordinates of the quadrature points in the physical space.
+    """
+    entity_tags = gmsh.model.getEntitiesForPhysicalName(physical_name) # Get entity tags for the given physical group name
+    jacobians_list = [] 
+    dets_list = []
+    coords_list = []
+    
+    for dim, tag in entity_tags:
+        jacobians, dets, coords = gmsh.model.mesh.getJacobians(elemType, xi, tag=tag)
+        jacobians_list.append(jacobians)
+        dets_list.append(dets)
+        coords_list.append(coords)
+    
+    # Concatenate results from all entities
+    jacobians_all = np.concatenate(jacobians_list) 
+    dets_all = np.concatenate(dets_list) 
+    coords_all = np.concatenate(coords_list)
+    
+    return jacobians_all, dets_all, coords_all
+#-------------------------------------------------------------------------------
 
 def end_dofs_from_nodes(nodeCoords):
     """
     Robustly identify first/last node dofs from coordinates (x-min, x-max).
     nodeCoords is flattened [x0,y0,z0, x1,y1,z1, ...]
-    Returns (left_dof, right_dof) as 0-based indices.
+    
+    Parameters
+    ----------
+    nodeCoords : array-like
+        Flattened array of node coordinates [x0, y0, z0, x1, y1, z1, ...].
+
+    returns
+    -------
+    left : int
+        Index of the leftmost node.
+    right : int
+        Index of the rightmost node.
     """
     X = np.asarray(nodeCoords, dtype=float).reshape(-1, 3)[:, 0]
     left = int(np.argmin(X))
@@ -88,6 +209,18 @@ def border_dofs_from_tags(l_tags, tag_to_dof):
     """
     Converts a list of GMSH node tags into the corresponding 
     compact matrix indices (DoFs).
+
+    Parameters
+    ----------
+    l_tags : array-like
+        List of GMSH node tags.
+    tag_to_dof : array-like
+        Mapping from GMSH node tags to compact matrix indices.
+
+    Returns
+    -------
+    l_dofs : ndarray
+        Array of compact matrix indices (DoFs).
     """
     # Ensure tags are integers
     l_tags = np.asarray(l_tags, dtype=int)
@@ -101,6 +234,22 @@ def border_dofs_from_tags(l_tags, tag_to_dof):
 def getPhysical(name):
     """
     Get the physical group elements and nodes for a given name and dimension.
+
+    Parameters
+    ----------
+    name : str
+        Name of the physical group.
+
+    Returns
+    -------
+    elemType : int
+        GMSH element type code.
+    elemTags : list
+        Tags of the elements in the physical group.
+    elemNodeTags : list
+        Tags of the nodes associated with the elements in the physical group.
+    entityTag : int
+        Tag of the entity to which the physical group belongs.
     """
     
     dimTags = gmsh.model.getEntitiesForPhysicalName(name)
@@ -125,7 +274,20 @@ def open_2d_mesh(msh_filename, order=1):
 
     Returns
     -------
-    elemType, nodeTags, nodeCoords, elemTags, elemNodeTags
+    elemType : int
+        GMSH element type code for the 2D elements.
+    nodeTags : list
+        Tags of the nodes in the mesh.
+    nodeCoords : list
+        Coordinates of the nodes in the mesh.
+    elemTags : list
+        Tags of the elements in the mesh.
+    elemNodeTags : list
+        Tags of the nodes associated with the elements in the mesh.
+    bnds : list
+        List of boundary names and dimensions.
+    bnds_tags : list
+        List of node tags for each boundary.
     """
 
     import gmsh
@@ -148,30 +310,55 @@ def open_2d_mesh(msh_filename, order=1):
     surf = gmsh.model.getEntities(2)[0][1]
 
     curve_tags = gmsh.model.getBoundary([(2, surf)], oriented=False)
+    
+    #--------------------------------------------
+    # Add physical groups for the boundaries
+    #--------------------------------------------
 
     def _approx_curve_length(ctag):
-        """Longueur approx d'une courbe via ses nœuds maillés (ordre des nœuds non garanti)."""
-        _, coords, _ = gmsh.model.mesh.getNodes(dim=1, tag=ctag)
-        if len(coords) == 0:
+        """
+        Approximate the length of a curve given its tag by summing distances between its nodes.
+
+        Parameters
+        ----------
+        ctag : int
+            Tag of the curve for which to approximate the length.
+
+        Returns
+        -------
+        length : float
+            Approximate length of the curve.
+        """
+        node_tags, node_coords, _ = gmsh.model.mesh.getNodes(dim=1, tag=ctag)
+        if len(node_coords) == 0:
             return 0.0
-        pts = np.asarray(coords, dtype=float).reshape(-1, 3)[:, :2]
-        # Sort par angle polaire depuis le centroïde → polygone approximatif fermé
-        cen = pts.mean(axis=0)
+        pts = np.asarray(node_coords, dtype=float).reshape(-1, 3)
+        pts = pts[:, :2]  # We only care about x and y for length
+        cen = np.mean(pts, axis=0)
         angles = np.arctan2(pts[:, 1] - cen[1], pts[:, 0] - cen[0])
         order = np.argsort(angles)
-        pts_s = pts[order]
-        segs = np.diff(np.vstack([pts_s, pts_s[0]]), axis=0)
-        return float(np.sum(np.linalg.norm(segs, axis=1)))
+        pts_ordered = pts[order]
+        segs = np.diff(np.vstack([pts_ordered, pts_ordered[0]]), axis=0)
+        return float(np.sum(np.sqrt(segs[:, 0]**2 + segs[:, 1]**2)))
 
-    lengths = [_approx_curve_length(abs(ct[1])) for ct in curve_tags]
+    lengths = [_approx_curve_length(ctag) for _, ctag in curve_tags]
     outer_idx = int(np.argmax(lengths))
-    inner_idx = 1 - outer_idx  # fonctionne pour 2 courbes ; sinon on prend le reste
+    inner_idx = 1 - outer_idx
 
+    """
+    gmsh.model.addPhysicalGroup(1, [curve_tags[0][1]], tag=1)
+    gmsh.model.setPhysicalName(1, 1, "OuterBoundary")
+
+    gmsh.model.addPhysicalGroup(1, [curve_tags[1][1]], tag=2)
+    gmsh.model.setPhysicalName(1, 2, "InnerBoundary")
+    """
     gmsh.model.addPhysicalGroup(1, [abs(curve_tags[outer_idx][1])], tag=1)
     gmsh.model.setPhysicalName(1, 1, "OuterBoundary")
 
     gmsh.model.addPhysicalGroup(1, [abs(curve_tags[inner_idx][1])], tag=2)
     gmsh.model.setPhysicalName(1, 2, "InnerBoundary")
+
+    #---------------------------------------------
 
     bnds = [('OuterBoundary', 1),('InnerBoundary', 1)]
 
